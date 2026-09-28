@@ -559,7 +559,8 @@
       conhecidas: new Set(),
       acentuadas: new Map(),
       alvos: new Map(),
-      pesos: new Map()
+      pesos: new Map(),
+      substantivos: new Set(SUBSTANTIVOS.concat([...NUCLEOS]))
     };
     [STOPWORDS, PALAVRAS_COMUNS, Object.keys(GIRIAS), Object.keys(ABREVIACOES), UNIDADES, TECNICOS]
       .forEach((lista) => lista.forEach((w) => lexico.conhecidas.add(w)));
@@ -1153,6 +1154,12 @@
       entradas.forEach((e) => {
         [e.titulo, e.categoria, ...e.perguntas, ...e.palavras].filter(Boolean).forEach((txt) => adicionarPalavra(this.lexico, textoPuro(txt), 3));
         e.respostas.filter((r) => typeof r === 'string').forEach((txt) => adicionarPalavra(this.lexico, textoPuro(txt), 1));
+        // Palavras-chave e títulos costumam ser substantivos: podem ser ecoados nas respostas.
+        [e.titulo, ...e.palavras].filter(Boolean).forEach((txt) => {
+          (semAcentos(textoPuro(txt).toLowerCase()).match(/[a-z]{4,}/g) || [])
+            .filter((w) => !STOPWORDS.has(w) && !RE_VERBAL.test(w))
+            .forEach((w) => this.lexico.substantivos.add(w));
+        });
       });
       entradas.forEach((e) => this._indexar(e));
       this._finalizar();
@@ -1706,30 +1713,53 @@
     importancia frequencia duracao limite procedimento preenchimento emissao uso utilizacao funcao definicao conceito
     classificacao tipos classes treinamento curso exame laudo documento inspecao analise permissao carga
   `));
+  // Substantivos do domínio que podem ser ecoados na resposta (a base acrescenta os seus).
+  const SUBSTANTIVOS = palavras(`
+    treinamento curso capacitacao reciclagem validade prazo periodicidade vencimento exame laudo documento ficha
+    formulario permissao analise inspecao uso trabalho atividade servico equipamento extintor capacete cinto
+    cinturao luva oculos botina protetor respirador mascara andaime escada telhado plataforma maquina instalacao
+    altura eletricidade energia espaco risco perigo acidente incidente incendio fogo ruido calor poeira produto
+    norma procedimento bloqueio etiquetagem cadeado aterramento desenergizacao seccionamento tensao painel quadro
+    vigia supervisor entrada tanque silo atmosfera oxigenio empresa empregado trabalhador funcionario colaborador
+    equipe brigada emergencia mandato eleicao reuniao carga horas diferenca obrigatoriedade responsabilidade
+    finalidade objetivo importancia frequencia duracao limite definicao conceito classificacao tipos classes
+    adicional insalubridade periculosidade ergonomia postura levantamento talabarte ancoragem certificado
+  `);
+
   const FOCOS_VAGOS = new Set(palavras(`
     validade prazo periodicidade reciclagem vencimento diferenca obrigatoriedade responsabilidade finalidade objetivo
     importancia frequencia duracao limite definicao conceito
   `));
   const RE_VERBAL = /(?:ar|er|ir|ando|endo|indo|ado|ido|ada|ida|ou|ei|amos|emos|imos|am|em)$/;
 
-  // Monta "a validade do treinamento da NR-35" a partir das palavras do usuário.
-  function fraseTema(quadro) {
+  // Preposição que o próprio usuário usou antes da palavra ("do treinamento", "de altura").
+  function preposicaoUsada(expandido, base) {
+    const m = new RegExp('\\b(do|da|dos|das|de)\\s+' + base + '\\b').exec(expandido || '');
+    return m ? m[1] : null;
+  }
+
+  // Monta "a validade do treinamento da NR-35" a partir das palavras do próprio usuário
+  // (só com substantivos conhecidos — nunca "o vence do curso").
+  function fraseTema(quadro, substantivos, expandido) {
     if (!quadro) return null;
-    const conteudo = quadro.conteudo.filter((c) => c.peso >= 1);
-    const nomes = conteudo
-      .filter((c) => !ehTokenDeEntidade(c.base) && !CONVERSA.has(c.base) && c.base.length >= 3 && !/\d/.test(c.base))
-      .filter((c) => NUCLEOS.has(singular(c.base)) || !RE_VERBAL.test(c.base))
+    const nomes = quadro.conteudo
+      .filter((c) => c.peso >= 1 && !ehTokenDeEntidade(c.base) && !CONVERSA.has(c.base) && !/\d/.test(c.base))
+      .filter((c) => substantivos.has(c.base) || substantivos.has(singular(c.base)))
       .slice(0, 2);
-    const ents = quadro.entidades.filter((e) => !e.implicita);
-    const ent = ents[0] || null;
-    const partes = nomes.map((c) => comArtigo(c.exib));
-    if (!partes.length && !ent) return null;
-    if (!partes.length) return entidadeComArtigo(ent, true);
+    const ent = quadro.entidades.find((e) => !e.implicita) || null;
+    if (!nomes.length && !ent) return null;
+    if (!nomes.length) return entidadeComArtigo(ent, true);
     // "a validade" sozinha é vaga demais para ecoar.
-    if (!ent && partes.length === 1 && FOCOS_VAGOS.has(singular(nomes[0].base))) return null;
-    let frase = partes[0];
-    if (partes[1]) frase += ' ' + contrair('de', partes[1]);
-    if (ent) frase += ' ' + contrair('de', entidadeComArtigo(ent, false));
+    if (!ent && nomes.length === 1 && FOCOS_VAGOS.has(singular(nomes[0].base))) return null;
+    let frase = comArtigo(nomes[0].exib);
+    if (nomes[1]) {
+      const prep = preposicaoUsada(expandido, nomes[1].base);
+      frase += ' ' + (prep === 'de' ? 'de ' + nomes[1].exib : contrair('de', comArtigo(nomes[1].exib)));
+    }
+    if (ent) {
+      const token = ent.tipo === 'nr' ? 'nr' + ent.num : semAcentos(ent.rotulo.toLowerCase()).split(' ')[0];
+      frase += ' ' + (preposicaoUsada(expandido, token) === 'de' && ent.tipo === 'nr' ? 'de ' + ent.rotulo : contrair('de', entidadeComArtigo(ent, false)));
+    }
     return frase;
   }
 
@@ -2375,7 +2405,7 @@
       const est = this.estado;
       const e = info.entrada || null;
       const html = this.opcoes.formato === 'html' || (this.opcoes.formato === 'auto' && /<\/?[a-z][^>]*>/i.test(corpo));
-      const tema = fraseTema(u.quadro);
+      const tema = fraseTema(u.quadro, this.lexico.substantivos, u.expandido);
       const repetida = !info.hesitante && !info.confirmar && !info.parcial && !!est.ultima && est.ultima.entradaId === info.id && est.turno - est.ultima.turno <= 5;
       if (repetida && !html) corpo = emTopicos(corpo);
       const pre = info.prefixos || this._prefixos(u);

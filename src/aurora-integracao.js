@@ -14,10 +14,7 @@
   'use strict';
 
   const VERSAO = '49.202.0';
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    if (typeof module === 'object' && module.exports) module.exports = { versao: VERSAO };
-    return;
-  }
+  if (typeof window === 'undefined' || typeof document === 'undefined') return; // só no navegador
 
   const SELETORES_LOGO = [
     '[data-aurora-logo]', '.ai-avatar', '.bot-avatar', '.assistant-avatar', '.aurora-avatar', '.avatar-ai', '.avatar-bot',
@@ -73,6 +70,14 @@
     .replace(/[^a-z0-9]+/g, ' ').trim();
 
   const RE_SO_FRASE = /^(?:(?:a |eu sou a )?aurora )?(?:a )?(?:sua )?assistente (?:virtual )?(?:de )?(?:inteligencia artificial|ia)$/;
+
+  // Texto do elemento com espaço entre os pedaços (<b>Aurora</b><span>sua…</span> → "Aurora sua…").
+  function textoDe(el) {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const partes = [];
+    while (walker.nextNode()) partes.push(walker.currentNode.nodeValue);
+    return partes.join(' ');
+  }
 
   function lerConfigDoScript() {
     const script = document.currentScript || document.querySelector('script[src*="aurora"]');
@@ -131,6 +136,9 @@
       this._ligarEntrada();
       this._observar();
       this._envolverFuncaoResposta();
+      // A última mensagem já na tela (ex.: boas-vindas) também ganha voz.
+      const cont = this.avatar && this.avatar.closest('[data-aurora-substituido]');
+      if (cont && cont.parentElement) this._novoNo(cont.parentElement);
       const n = this._avatares.size;
       if (window.console) console.info('[Aurora ' + VERSAO + '] ativa — avatares: ' + n + (this._funcaoEnvolvida ? ' · respostas via ' + this._funcaoEnvolvida : ''));
       return this;
@@ -213,7 +221,7 @@
         const el = no.parentElement;
         if (!el || el.closest('aurora-avatar, script, style, textarea, [contenteditable="true"]')) return;
         let alvo = el;
-        const ehSoFrase = (x) => RE_SO_FRASE.test(normalizar(x.textContent));
+        const ehSoFrase = (x) => RE_SO_FRASE.test(normalizar(textoDe(x)));
         const temConteudo = (x) => !!x.querySelector('svg, img, canvas, button, input, textarea, select, video, aurora-avatar');
         while (alvo.parentElement && alvo.parentElement !== document.body && ehSoFrase(alvo.parentElement) && !temConteudo(alvo.parentElement)) {
           alvo = alvo.parentElement;
@@ -382,6 +390,7 @@
 
     _reagir(r) {
       if (!r) return;
+      this.ultimoResultado = r;
       this._reacaoPendente = { r, t: Date.now() };
       if (this.avatar && this.avatar.estado === 'pensando') this.avatar.estado = 'ocioso';
     },
@@ -505,8 +514,13 @@
       if (texto.length <= atual.falado.length) return;
       const novo = texto.slice(atual.falado.length);
       const primeiro = !atual.falado;
+      const agora = performance.now();
+      if (!atual.inicio) atual.inicio = agora;
+      // Acompanha a velocidade real com que o texto aparece (efeito de digitação).
+      const decorrido = (agora - atual.inicio) / 1000;
+      const cps = decorrido > 0.15 ? Math.max(18, Math.min(90, texto.length / decorrido)) : 18;
       atual.falado = texto;
-      atual.avatar.falar(novo, primeiro ? { duracaoMaxima: 5000 } : { continuar: true, cps: 30, duracaoMaxima: 2500 });
+      atual.avatar.falar(novo, primeiro ? { duracaoMaxima: 5000 } : { continuar: true, cps, duracaoMaxima: 2500 });
     },
 
     _envolverFuncaoResposta() {

@@ -15,17 +15,14 @@
   'use strict';
 
   const VERSAO = '49.202.0';
-  if (typeof window === 'undefined' || typeof HTMLElement === 'undefined') {
-    if (typeof module === 'object' && module.exports) module.exports = { versao: VERSAO };
-    return;
-  }
+  if (typeof window === 'undefined' || typeof HTMLElement === 'undefined') return; // só no navegador
   if (window.customElements && window.customElements.get('aurora-avatar')) return;
 
   const EMOCOES = {
     neutra: { sorriso: 0.9, olhoAberto: 1, olhoSorriso: 0.1, sobrE: 0, sobrD: 0, interno: 0, rubor: 0.12, cabR: 0 },
-    feliz: { sorriso: 2.6, olhoAberto: 0.96, olhoSorriso: 0.5, sobrE: 0.9, sobrD: 0.9, interno: -1, rubor: 0.55, cabR: 2 },
-    preocupada: { sorriso: -0.7, olhoAberto: 1.08, olhoSorriso: 0, sobrE: 0.8, sobrD: 0.8, interno: 11, rubor: 0, cabR: 0 },
-    empatica: { sorriso: 0.3, olhoAberto: 0.92, olhoSorriso: 0.15, sobrE: 0.5, sobrD: 0.5, interno: 8, rubor: 0.15, cabR: 4 },
+    feliz: { sorriso: 3, olhoAberto: 0.96, olhoSorriso: 0.55, sobrE: 0.9, sobrD: 0.9, interno: -1, rubor: 0.6, cabR: 2 },
+    preocupada: { sorriso: -1.2, olhoAberto: 1.08, olhoSorriso: 0, sobrE: 1, sobrD: 1, interno: 14, rubor: 0, cabR: 0 },
+    empatica: { sorriso: 0.35, olhoAberto: 0.92, olhoSorriso: 0.15, sobrE: 0.6, sobrD: 0.6, interno: 9, rubor: 0.18, cabR: 4 },
     curiosa: { sorriso: 0.6, olhoAberto: 1.05, olhoSorriso: 0, sobrE: 2.2, sobrD: 0.1, interno: 1, rubor: 0.1, cabR: -5 },
     surpresa: { sorriso: 0, olhoAberto: 1.2, olhoSorriso: 0, sobrE: 2.6, sobrD: 2.6, interno: 0, rubor: 0.2, cabR: 0, boca: { w: 5.2, a: 3.2, r: 0.9 } }
   };
@@ -56,8 +53,10 @@
   const ESTILO = `
     :host {
       --aurora-pele: #e2ab86;
+      --aurora-pele-luz: #efc19f;
+      --aurora-pele-olhos: #e8b48f;
       --aurora-pele-sombra: #c98d6b;
-      --aurora-cabelo: #1c2230;
+      --aurora-cabelo: #2e1e17;
       --aurora-iris: #19b3a3;
       --aurora-labios: #b85563;
       --aurora-uniforme: #13263d;
@@ -127,13 +126,15 @@
       <stop offset="0" stop-color="var(--aurora-destaque-3)" stop-opacity=".45"/>
       <stop offset="1" stop-color="var(--aurora-destaque-3)" stop-opacity="0"/>
     </radialGradient>
-    <linearGradient id="${u('pele')}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="var(--aurora-pele)"/>
+    <radialGradient id="${u('pele')}" cx="50%" cy="40%" r="62%">
+      <stop offset="0" stop-color="var(--aurora-pele-luz)"/>
+      <stop offset=".62" stop-color="var(--aurora-pele)"/>
       <stop offset="1" stop-color="var(--aurora-pele-sombra)"/>
-    </linearGradient>
-    <linearGradient id="${u('cabelo')}" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2a3346"/>
-      <stop offset="1" stop-color="var(--aurora-cabelo)"/>
+    </radialGradient>
+    <linearGradient id="${u('cabelo')}" x1="0" y1="0" x2=".35" y2="1">
+      <stop offset="0" stop-color="#5b3d2f"/>
+      <stop offset=".5" stop-color="var(--aurora-cabelo)"/>
+      <stop offset="1" stop-color="#1b110c"/>
     </linearGradient>
     <linearGradient id="${u('mecha')}" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox" spreadMethod="reflect">
       <stop offset="0" stop-color="var(--aurora-destaque)"/>
@@ -187,7 +188,7 @@
           <circle cx="-1.1" cy="-1.2" r="0.95" fill="#fff"/>
           <circle cx="1.2" cy="0.9" r="0.45" fill="#fff" opacity=".85"/>
         </g>
-        <path class="palpebra-inf-e" d="M -6 4 C -3 4, 3 4, 6 4 L 6 7 L -6 7 Z" fill="var(--aurora-pele)"/>
+        <path class="palpebra-inf-e" d="M -6 4 C -3 4, 3 4, 6 4 L 6 7 L -6 7 Z" fill="var(--aurora-pele-olhos)"/>
       </g>
       <path d="M -6.1 0.3 C -3.9 -4.8, 3.9 -4.8, 6.1 0.3 L 6.9 -0.9" fill="none" stroke="#1a1420" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
     </g>
@@ -200,7 +201,7 @@
           <circle cx="-1.1" cy="-1.2" r="0.95" fill="#fff"/>
           <circle cx="1.2" cy="0.9" r="0.45" fill="#fff" opacity=".85"/>
         </g>
-        <path class="palpebra-inf-d" d="M -6 4 C -3 4, 3 4, 6 4 L 6 7 L -6 7 Z" fill="var(--aurora-pele)"/>
+        <path class="palpebra-inf-d" d="M -6 4 C -3 4, 3 4, 6 4 L 6 7 L -6 7 Z" fill="var(--aurora-pele-olhos)"/>
       </g>
       <path d="M 6.1 0.3 C 3.9 -4.8, -3.9 -4.8, -6.1 0.3 L -6.9 -0.9" fill="none" stroke="#1a1420" stroke-width="1.35" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
     </g>
@@ -220,16 +221,19 @@
 
     <path class="franja" fill="url(#${u('cabelo')})"
       d="M 36.2 53 C 35.5 36, 46 26, 61 26 C 75.5 26, 85 36, 84.2 51 C 80.5 43.5, 74.5 38.8, 66.5 37.2 C 62.5 42.5, 53.5 46.5, 44.5 47 C 40.5 47.4, 38 49.5, 36.2 53 Z"/>
-    <path class="mecha" d="M 43.5 34.5 C 51.5 29, 64 28.2, 75 32.5" fill="none" stroke="url(#${u('mecha')})" stroke-width="2.2" stroke-linecap="round" opacity=".95"/>
-    <path d="M 40 43.5 C 44 38, 49.5 35.2, 55 34.2" fill="none" stroke="url(#${u('mecha')})" stroke-width="1.1" stroke-linecap="round" opacity=".6"/>
+    <path d="M 45 29.5 C 51 26.6, 59 25.6, 67 26.8" fill="none" stroke="#9a7360" stroke-width="1.5" stroke-linecap="round" opacity=".35"/>
+    <path class="mecha" d="M 71.5 31.5 C 64.5 35.5, 55.5 41.5, 42.5 45.2" fill="none" stroke="url(#${u('mecha')})" stroke-width="1.9" stroke-linecap="round" opacity=".95"/>
+    <path d="M 64.5 29 C 57.5 32.2, 49.5 37, 40.2 41" fill="none" stroke="url(#${u('mecha')})" stroke-width="1.1" stroke-linecap="round" opacity=".6"/>
 
     <g class="acessorio-fone">
-      <path d="M 32.5 57 C 31 29, 89 29, 87.5 57" fill="none" stroke="#1d2b3f" stroke-width="3" stroke-linecap="round"/>
-      <path d="M 34 50 C 36 33, 84 33, 86 50" fill="none" stroke="var(--aurora-destaque)" stroke-width=".7" stroke-linecap="round" opacity=".7"/>
-      <ellipse cx="33" cy="59" rx="4.3" ry="5.8" fill="#16233a" stroke="var(--aurora-destaque)" stroke-width=".8"/>
-      <ellipse cx="87" cy="59" rx="3.8" ry="5.3" fill="#16233a" stroke="var(--aurora-destaque)" stroke-width=".6" opacity=".9"/>
-      <path d="M 34.5 64 C 36 74.5, 44 80, 51.2 79.2" fill="none" stroke="#1d2b3f" stroke-width="1.8" stroke-linecap="round"/>
-      <circle class="microfone" cx="52.2" cy="79" r="1.7" fill="var(--aurora-destaque)"/>
+      <path d="M 31.6 58 C 30.2 12.5, 89.8 12.5, 88.4 58" fill="none" stroke="#101d31" stroke-width="2.4" stroke-linecap="round"/>
+      <path d="M 35.5 40 C 41 26.5, 79 26.5, 84.5 40" fill="none" stroke="#2c4262" stroke-width=".8" stroke-linecap="round" opacity=".8"/>
+      <ellipse cx="32.2" cy="60" rx="4.1" ry="5.5" fill="#14223a"/>
+      <ellipse cx="32.4" cy="60.3" rx="2.2" ry="3.3" fill="#0c1626"/>
+      <circle cx="31.1" cy="57.2" r=".9" fill="var(--aurora-destaque)"/>
+      <ellipse cx="87.8" cy="60" rx="3.7" ry="5.1" fill="#14223a"/>
+      <path d="M 33 65 C 34.5 74.5, 42.5 79.8, 50.6 79" fill="none" stroke="#101d31" stroke-width="1.6" stroke-linecap="round"/>
+      <circle class="microfone" cx="51.6" cy="78.9" r="1.55" fill="var(--aurora-destaque)"/>
     </g>
     <g class="acessorio-capacete" display="none">
       <path d="M 33.5 49 C 33 24, 87 24, 86.5 49 Z" fill="#f4f7fb"/>
@@ -293,10 +297,11 @@
       this._visivel = true;
       this._loop = this._loop.bind(this);
       this._reduzido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-      this.setAttribute('role', 'img');
     }
 
     connectedCallback() {
+      // Atributos só podem ser definidos aqui (o construtor não pode alterá-los).
+      if (!this.hasAttribute('role')) this.setAttribute('role', 'img');
       if (!this.hasAttribute('aria-label')) this.setAttribute('aria-label', this.getAttribute('nome') || 'Aurora');
       this._aplicarTamanho();
       this._aplicarAcessorio();
@@ -439,6 +444,8 @@
       const a = this.getAttribute('acessorio') || 'fone';
       this._el.fone.setAttribute('display', a === 'fone' ? 'inline' : 'none');
       this._el.capacete.setAttribute('display', a === 'capacete' ? 'inline' : 'none');
+      // Sob o capacete, as mechas coloridas da franja ficam escondidas.
+      this._raiz.querySelectorAll('.cabeca > path[stroke^="url"]').forEach((p) => p.setAttribute('display', a === 'capacete' ? 'none' : 'inline'));
     }
 
     _congelarRosto() {
@@ -615,8 +622,8 @@
       const palp = `M -6 ${inf} C -3 ${f(inf - 1.3 * v.olhoSorriso)}, 3 ${f(inf - 1.3 * v.olhoSorriso)}, 6 ${inf} L 6 7 L -6 7 Z`;
       e.palpE.setAttribute('d', palp);
       e.palpD.setAttribute('d', palp);
-      e.sobrE.setAttribute('transform', `translate(49 ${f(48 - v.sobrE)}) rotate(${f(-v.interno)})`);
-      e.sobrD.setAttribute('transform', `translate(71 ${f(48 - v.sobrD)}) rotate(${f(v.interno)})`);
+      e.sobrE.setAttribute('transform', `translate(49 ${f(48 - v.sobrE)}) rotate(${f(-v.interno * 1.25)})`);
+      e.sobrD.setAttribute('transform', `translate(71 ${f(48 - v.sobrD)}) rotate(${f(v.interno * 1.25)})`);
 
       const cx = 60;
       const cy = 76.5;
